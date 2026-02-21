@@ -1,9 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { errorHandler } from './middleware/error.middleware';
 import authRoutes from './modules/auth/auth.routes';
-
+import { authenticate } from './middleware/auth.middleware';
+import { errorHandler } from './middleware/error.middleware';
+import { authorize } from './middleware/role.middleware';
 
 dotenv.config();
 
@@ -11,7 +12,21 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(errorHandler);
+
 app.use('/api/v1/auth', authRoutes);
+
+app.get(
+  '/api/v1/admin-only',
+  authenticate,
+  authorize(['ADMIN']),
+  (req, res) => {
+    res.json({
+      success: true,
+      message: 'Welcome Admin',
+    });
+  }
+);
+
+app.use(errorHandler);  // will always be last
 
 export default app;
