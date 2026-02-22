@@ -2,9 +2,9 @@
 
 ## Overview
 
-Crypto Trade API is a scalable REST backend built using Node.js, Express, Prisma, and PostgreSQL. It supports JWT authentication, role-based access control (USER / ADMIN), and CRUD operations for trade signals.
+Crypto Trade API is a scalable REST backend built using Node.js, Express, Prisma, and PostgreSQL. It supports JWT authentication, role-based access control (USER / ADMIN), CRUD operations for trade signals, rate limiting, and Redis-backed caching.
 
-The system is designed with modular architecture, validation, secure password handling, and a Dockerized database setup.
+The system is designed with modular architecture, validation, request logging, secure password handling, and a Dockerized database setup.
 
 ---
 
@@ -18,6 +18,9 @@ The system is designed with modular architecture, validation, secure password ha
 - JWT Authentication
 - Zod Validation
 - Swagger (OpenAPI)
+- Redis (Caching & Rate Limiting)
+- Morgan (HTTP Request Logging)
+- Express Rate Limit
 - Docker
 
 ---
@@ -27,7 +30,7 @@ The system is designed with modular architecture, validation, secure password ha
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/prajjwal-17/crypto-trade-api.git
+git clone <your-repo-url>
 cd crypto-trade-api
 ```
 
@@ -122,8 +125,22 @@ All financial fields use Prisma's `Decimal` type for precision.
 - JWT authentication with configurable expiration
 - Role-based access middleware on protected routes
 - Input validation using `Zod` schemas
+- Rate limiting applied globally to prevent abuse and brute-force attacks
+- HTTP request logging via `Morgan` for observability and debugging
 - Dockerized database for environment isolation
 - Structured error handling across all endpoints
+
+---
+
+## Rate Limiting and Logging
+
+**Rate Limiting**
+
+API rate limiting is enforced globally using `express-rate-limit` backed by Redis. This prevents abuse, brute-force login attempts, and ensures fair usage across clients. Requests exceeding the limit receive a `429 Too Many Requests` response.
+
+**Request Logging**
+
+All incoming HTTP requests are logged using `Morgan`. This provides visibility into request methods, routes, status codes, and response times, aiding both development debugging and production monitoring.
 
 ---
 
@@ -132,8 +149,8 @@ All financial fields use Prisma's `Decimal` type for precision.
 The system is designed to scale horizontally:
 
 - Stateless JWT allows multi-instance deployment without shared session state
+- Redis is integrated for caching frequent read operations and backing the rate limiter
 - Auth and Trade modules can be separated into independent microservices
-- Redis can be introduced for caching frequent read operations
 - NGINX can act as a load balancer to distribute traffic across instances
 - Docker ensures consistent environments across development and production
 
