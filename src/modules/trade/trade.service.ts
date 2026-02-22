@@ -1,9 +1,11 @@
 import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../middleware/error.middleware';
+import redis from '../../config/redis';
+
 
 export const createSignal = async (userId: string, data: any) => {
-  return prisma.tradeSignal.create({
+  const signal = await prisma.tradeSignal.create({
     data: {
       asset: data.asset,
       direction: data.direction,
@@ -13,20 +15,76 @@ export const createSignal = async (userId: string, data: any) => {
       userId,
     },
   });
+
+  //  Invalidate cache safely
+  try {
+    await redis.del(`signals:user:${userId}`);
+    await redis.del(`signals:admin:all`);
+  } catch (err) {
+    console.error('Redis cache invalidation failed');
+  }
+
+  return signal;
 };
 
+
 export const getMySignals = async (userId: string) => {
-  return prisma.tradeSignal.findMany({
+  const cacheKey = `signals:user:${userId}`;
+
+  //  Try Redis read
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      console.log('Serving user signals from cache');
+      return JSON.parse(cached);
+    }
+  } catch (err) {
+    console.error('Redis read failed, falling back to DB');
+  }
+
+  //  Always fallback to DB
+  const signals = await prisma.tradeSignal.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
   });
+
+  //  Try caching result (non-blocking if fails)
+  try {
+    await redis.set(cacheKey, JSON.stringify(signals), 'EX', 60);
+  } catch (err) {
+    console.error('Redis write failed');
+  }
+
+  return signals;
 };
 
+
 export const getAllSignals = async () => {
-  return prisma.tradeSignal.findMany({
+  const cacheKey = `signals:admin:all`;
+
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      console.log('Serving admin signals from cache');
+      return JSON.parse(cached);
+    }
+  } catch (err) {
+    console.error('Redis read failed, falling back to DB');
+  }
+
+  const signals = await prisma.tradeSignal.findMany({
     orderBy: { createdAt: 'desc' },
   });
+
+  try {
+    await redis.set(cacheKey, JSON.stringify(signals), 'EX', 60);
+  } catch (err) {
+    console.error('Redis write failed');
+  }
+
+  return signals;
 };
+
 
 export const updateSignal = async (
   signalId: string,
@@ -46,7 +104,7 @@ export const updateSignal = async (
     throw new AppError('Forbidden: Not owner', 403);
   }
 
-  return prisma.tradeSignal.update({
+  const updatedSignal = await prisma.tradeSignal.update({
     where: { id: signalId },
     data: {
       ...(data.asset && { asset: data.asset }),
@@ -63,7 +121,18 @@ export const updateSignal = async (
       ...(data.status && { status: data.status }),
     },
   });
+
+  //  Safe cache invalidation
+  try {
+    await redis.del(`signals:user:${existing.userId}`);
+    await redis.del(`signals:admin:all`);
+  } catch (err) {
+    console.error('Redis invalidation failed');
+  }
+
+  return updatedSignal;
 };
+
 
 export const deleteSignal = async (
   signalId: string,
@@ -82,7 +151,17 @@ export const deleteSignal = async (
     throw new AppError('Forbidden: Not owner', 403);
   }
 
-  return prisma.tradeSignal.delete({
+  const deletedSignal = await prisma.tradeSignal.delete({
     where: { id: signalId },
   });
+
+  //  Safe cache invalidation
+  try {
+    await redis.del(`signals:user:${existing.userId}`);
+    await redis.del(`signals:admin:all`);
+  } catch (err) {
+    console.error('Redis invalidation failed');
+  }
+
+  return deletedSignal;
 };
