@@ -30,7 +30,7 @@ The system is designed with modular architecture, validation, request logging, s
 ### 1. Clone Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/prajjwal-17/crypto-trade-api.git
 cd crypto-trade-api
 ```
 
