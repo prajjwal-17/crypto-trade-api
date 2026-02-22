@@ -7,6 +7,8 @@ import tradeRoutes from './modules/trade/trade.routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger';
 import morgan from 'morgan';
+import { authLimiter } from './middleware/rateLimit.middleware';
+
 
 
 
@@ -18,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/signals', tradeRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
