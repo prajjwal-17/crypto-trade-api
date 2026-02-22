@@ -27,8 +27,8 @@ The system is designed with modular architecture, validation, secure password ha
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/prajjwal-17/crypto.git
-cd crypto
+git clone https://github.com/prajjwal-17/crypto-trade-api.git
+cd crypto-trade-api
 ```
 
 ### 2. Install Dependencies
